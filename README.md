@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cat vs Dog Backyard Game</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #87CE73; /* backyard grass */
+      margin: 0;
+      flex-direction: column;
+    }
+    canvas {
+      border: 3px solid #fff;
+      background: #9ACD32; /* lawn */
+    }
+    .scoreboard {
+      color: white;
+      font-family: Arial, sans-serif;
+      font-size: 20px;
+      margin-bottom: 10px;
+      text-shadow: 1px 1px 3px black;
+    }
+  </style>
+</head>
+<body>
+  <div class="scoreboard">
+    <span id="score1">🐱 Cat (WASD): 0</span> &nbsp;&nbsp; | &nbsp;&nbsp;
+    <span id="score2">🐶 Dog (Arrows): 0</span>
+  </div>
+  <canvas id="game" width="500" height="500"></canvas>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const box = 20; // grid size
+
+    // Cat (Player 1)
+    let cat = [{x: 5 * box, y: 10 * box}];
+    let direction1 = null;
+    let score1 = 0;
+
+    // Dog (Player 2)
+    let dog = [{x: 20 * box, y: 10 * box}];
+    let direction2 = null;
+    let score2 = 0;
+
+    // Multiple squirrels 🐿️
+    let squirrels = [];
+    function spawnSquirrels(num = 3) {
+      squirrels = [];
+      for (let i = 0; i < num; i++) {
+        squirrels.push({
+          x: Math.floor(Math.random() * (canvas.width / box)) * box,
+          y: Math.floor(Math.random() * (canvas.height / box)) * box
+        });
+      }
+    }
+    spawnSquirrels();
+
+    document.addEventListener("keydown", setDirection);
+
+    function setDirection(event) {
+      // Cat WASD
+      if (event.key === "a" && direction1 !== "RIGHT") direction1 = "LEFT";
+      else if (event.key === "w" && direction1 !== "DOWN") direction1 = "UP";
+      else if (event.key === "d" && direction1 !== "LEFT") direction1 = "RIGHT";
+      else if (event.key === "s" && direction1 !== "UP") direction1 = "DOWN";
+
+      // Dog Arrows
+      if (event.key === "ArrowLeft" && direction2 !== "RIGHT") direction2 = "LEFT";
+      else if (event.key === "ArrowUp" && direction2 !== "DOWN") direction2 = "UP";
+      else if (event.key === "ArrowRight" && direction2 !== "LEFT") direction2 = "RIGHT";
+      else if (event.key === "ArrowDown" && direction2 !== "UP") direction2 = "DOWN";
+    }
+
+    function drawAnimal(snake, headEmoji, bodyEmoji) {
+      for (let i = 0; i < snake.length; i++) {
+        ctx.font = "18px Arial";
+        ctx.fillText(i === 0 ? headEmoji : bodyEmoji, snake[i].x + 2, snake[i].y + 16);
+      }
+    }
+
+    function moveSnake(snake, direction) {
+      if (!direction) return {x: snake[0].x, y: snake[0].y};
+      let x = snake[0].x;
+      let y = snake[0].y;
+      if (direction === "LEFT") x -= box;
+      if (direction === "UP") y -= box;
+      if (direction === "RIGHT") x += box;
+      if (direction === "DOWN") y += box;
+      return {x, y};
+    }
+
+    function collision(head, array) {
+      return array.some(segment => head.x === segment.x && head.y === segment.y);
+    }
+
+    function draw() {
+      // Backyard background
+      ctx.fillStyle = "#7CFC00"; 
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw squirrels 🐿️
+      ctx.font = "18px Arial";
+      squirrels.forEach(sq => ctx.fillText("🐿️", sq.x + 2, sq.y + 16));
+
+      // Move
+      let newHead1 = moveSnake(cat, direction1);
+      let newHead2 = moveSnake(dog, direction2);
+
+      // Cat eats squirrel
+      let ate1 = false;
+      squirrels = squirrels.filter(sq => {
+        if (newHead1.x === sq.x && newHead1.y === sq.y) {
+          score1++;
+          ate1 = true;
+          return false;
+        }
+        return true;
+      });
+
+      // Dog eats squirrel
+      let ate2 = false;
+      squirrels = squirrels.filter(sq => {
+        if (newHead2.x === sq.x && newHead2.y === sq.y) {
+          score2++;
+          ate2 = true;
+          return false;
+        }
+        return true;
+      });
+
+      if (squirrels.length === 0) spawnSquirrels();
+
+      // Snake growth mechanic
+      if (!ate1 && direction1) cat.pop();
+      else if (ate1) {
+        for (let i = 0; i < score1; i++) {
+          cat.push({...cat[cat.length - 1]});
+        }
+      }
+
+      if (!ate2 && direction2) dog.pop();
+      else if (ate2) {
+        for (let i = 0; i < score2; i++) {
+          dog.push({...dog[dog.length - 1]});
+        }
+      }
+
+      // Game over checks
+      if (direction1 &&
+        (newHead1.x < 0 || newHead1.y < 0 || 
+         newHead1.x >= canvas.width || newHead1.y >= canvas.height ||
+         collision(newHead1, cat) || collision(newHead1, dog))) {
+        clearInterval(game);
+        alert("Game Over! 🐱 Cat: " + score1 + " | 🐶 Dog: " + score2);
+      }
+      if (direction2 &&
+        (newHead2.x < 0 || newHead2.y < 0 || 
+         newHead2.x >= canvas.width || newHead2.y >= canvas.height ||
+         collision(newHead2, dog) || collision(newHead2, cat))) {
+        clearInterval(game);
+        alert("Game Over! 🐱 Cat: " + score1 + " | 🐶 Dog: " + score2);
+      }
+
+      if (direction1) cat.unshift(newHead1);
+      if (direction2) dog.unshift(newHead2);
+
+      // Draw cat & dog
+      drawAnimal(cat, "🐱", "⬛");
+      drawAnimal(dog, "🐶", "⬜");
+
+      // Update scoreboards
+      document.getElementById("score1").textContent = "🐱 Cat (WASD): " + score1;
+      document.getElementById("score2").textContent = "🐶 Dog (Arrows): " + score2;
+    }
+
+    let game = setInterval(draw, 150);
+  </script>
+</body>
+</html>
